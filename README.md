@@ -109,39 +109,11 @@ PUT    /api/orders/{id}      → Atualiza pedido existente
 DELETE /api/orders/{id}      → Remove pedido
 ```
 
-#### Exemplo de criação de pedido
-
-**Request:**
-```http
-POST /api/orders
-Content-Type: application/json
-
-[1, 4, 5]
-```
-> O body é uma lista com os **IDs dos itens** do cardápio.
-
-**Response `201 Created`:**
-```json
-{
-  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "items": [
-    { "id": 1, "name": "X Burger", "price": 5.00, "type": "Sandwich" },
-    { "id": 4, "name": "Batata frita", "price": 2.00, "type": "Fries" },
-    { "id": 5, "name": "Refrigerante", "price": 2.50, "type": "Drink" }
-  ],
-  "subtotal": 9.50,
-  "discountPercentage": 20.0,
-  "discountAmount": 1.90,
-  "total": 7.60,
-  "createdAt": "2024-01-15T10:30:00Z"
-}
-```
-
 #### Respostas de erro
 
 | Código | Situação |
 |--------|----------|
-| `400` | Body vazio ou malformado |
+| `400` | Body vazio ou mal formado |
 | `404` | Pedido não encontrado |
 | `422` | Item duplicado ou ID inválido no cardápio |
 | `500` | Erro interno inesperado |
