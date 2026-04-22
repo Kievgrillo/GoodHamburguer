@@ -1,25 +1,30 @@
+using GoodHamburger.Application.Services;
+using GoodHamburger.Domain.Interfaces;
+using GoodHamburger.Infrastructure.Repository;
+using GoodHamburguer.Api.Middleware;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// CORS — necessário para o Blazor consumir a API
+builder.Services.AddCors(options =>
+    options.AddDefaultPolicy(policy =>
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+
+// Injeção de dependência
+builder.Services.AddSingleton<IRepositorioDoPedido, InMemoryOrderRepository>();
+builder.Services.AddScoped<ServicePedido>();
+builder.Services.AddSingleton<ServiceMenu>();
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
+app.UseMiddleware<ExceptionMiddleware>();
+app.UseCors();
+app.UseSwagger();
+app.UseSwaggerUI();
 app.MapControllers();
 
 app.Run();
