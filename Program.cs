@@ -9,12 +9,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// CORS — necessário para o Blazor consumir a API
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
         policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
-// Injeção de dependência
 builder.Services.AddSingleton<IRepositorioDoPedido, InMemoryOrderRepository>();
 builder.Services.AddScoped<ServicePedido>();
 builder.Services.AddSingleton<ServiceMenu>();
