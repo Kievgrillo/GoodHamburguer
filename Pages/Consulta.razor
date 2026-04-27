@@ -1,0 +1,133 @@
+﻿@page "/consultar"
+@using GoodHamburger.Blazor.Models
+@using GoodHamburger.Blazor.Services
+@inject PedidoApiService Api
+
+<PageTitle>Good Hamburger — Consultar Pedido</PageTitle>
+
+<div class="gh-container">
+
+    <header class="gh-header">
+        <div class="gh-logo">🍔 Good Hamburger</div>
+        <nav class="gh-nav">
+            <a href="/pedidos" class="gh-nav-link">Pedidos</a>
+            <a href="/cardapio" class="gh-nav-link">Cardápio</a>
+            <a href="/consultar" class="gh-nav-link active">Consultar por ID</a>
+        </nav>
+    </header>
+
+    <div class="gh-content gh-content-centro">
+        <section class="gh-card gh-card-consulta">
+            <h2 class="gh-card-title">🔍 Consultar pedido por ID</h2>
+            <p class="gh-subtitulo">Cole o identificador completo do pedido para consultá-lo.</p>
+
+            <div class="gh-busca-row">
+                <input class="gh-input"
+                       type="text"
+                       placeholder="ex: 3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                       @bind="idDigitado"
+                       @bind:event="oninput"
+                       @onkeydown="OnEnter" />
+                <button class="gh-btn gh-btn-primario" @onclick="Consultar" disabled="@buscando">
+                    @(buscando ? "Buscando..." : "Buscar")
+                </button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(mensagemErro))
+            {
+                <div class="gh-alert gh-alert-erro">⚠️ @mensagemErro</div>
+            }
+
+            @if (pedidoEncontrado != null)
+            {
+                <div class="gh-resultado">
+                    <div class="gh-pedido-card">
+                        <div class="gh-pedido-header">
+                            <span class="gh-pedido-id">ID: @pedidoEncontrado.Id</span>
+                            <span class="gh-pedido-hora">
+                                @pedidoEncontrado.CreatedAt.ToLocalTime().ToString("HH:mm - dd/MM/yyyy")
+                            </span>
+                        </div>
+
+                        <div class="gh-pedido-itens">
+                            @foreach (var item in pedidoEncontrado.Items)
+                            {
+                                <span class="gh-tag">@TipoEmoji(item.Type) @item.Name — R$ @item.Price.ToString("F2")</span>
+                            }
+                        </div>
+
+                        <div class="gh-pedido-valores">
+                            <div class="gh-pedido-linha">
+                                <span>Subtotal</span>
+                                <span>R$ @pedidoEncontrado.Subtotal.ToString("F2")</span>
+                            </div>
+                            @if (pedidoEncontrado.DescontoPercentual > 0)
+                            {
+                                <div class="gh-pedido-linha gh-pedido-desconto">
+                                    <span>Desconto (@pedidoEncontrado.DescontoPercentual%)</span>
+                                    <span>- R$ @pedidoEncontrado.DiscountAmount.ToString("F2")</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="gh-pedido-linha">
+                                    <span>Sem desconto aplicável</span>
+                                    <span>—</span>
+                                </div>
+                            }
+                            <div class="gh-pedido-linha gh-pedido-total">
+                                <span>Total</span>
+                                <span>R$ @pedidoEncontrado.Total.ToString("F2")</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </section>
+    </div>
+</div>
+
+@code {
+    private string idDigitado = string.Empty;
+    private bool buscando = false;
+    private string? mensagemErro;
+    private PedidoDto? pedidoEncontrado;
+
+    private async Task Consultar()
+    {
+        mensagemErro = null;
+        pedidoEncontrado = null;
+
+        if (string.IsNullOrWhiteSpace(idDigitado))
+        {
+            mensagemErro = "Digite o ID do pedido.";
+            return;
+        }
+
+        if (!Guid.TryParse(idDigitado.Trim(), out var guid))
+        {
+            mensagemErro = "ID inválido. O formato esperado é um GUID (ex: 3fa85f64-5717-4562-b3fc-2c963f66afa6).";
+            return;
+        }
+
+        buscando = true;
+        var (pedido, erro) = await Api.GetByIdAsync(guid);
+        buscando = false;
+
+        if (erro != null) mensagemErro = erro;
+        else pedidoEncontrado = pedido;
+    }
+
+    private async Task OnEnter(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Consultar();
+    }
+
+    private static string TipoEmoji(string tipo) => tipo switch
+    {
+        "Sandwich" or "Sanduiche" => "🍔",
+        "Fries" or "BatataFrita" => "🍟",
+        "Drink" or "Refrigerante" => "🥤",
+        _ => "🍽️"
+    };
+}

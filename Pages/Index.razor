@@ -1,0 +1,105 @@
+﻿@page "/"
+@inject NavigationManager Nav
+
+<PageTitle>Good Hamburger</PageTitle>
+
+<div class="home-wrap">
+
+    <section class="hero">
+        <div class="hero-bg-blobs">
+            <div class="blob b1"></div>
+            <div class="blob b2"></div>
+            <div class="blob b3"></div>
+        </div>
+
+        <div class="hero-inner">
+            <div class="hero-text">
+                <span class="hero-eyebrow">🍔 Bem-vindo à</span>
+                <h1 class="hero-title">
+                    <em>Good</em> Hamburger
+                </h1>
+                <p class="hero-desc">
+                    Ingredientes frescos, sabor de verdade.<br />
+                    Monte seu combo e aproveite nossos descontos.
+                </p>
+                <button class="btn-cta" @onclick='() => Nav.NavigateTo("/pedidos")'>
+                    Fazer meu pedido <span>→</span>
+                </button>
+            </div>
+
+            <div class="hero-visual">
+                <div class="burger-ring"></div>
+                <div class="burger-icon">🍔</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cardápio -->
+    <section class="menu-section">
+        <div class="section-inner">
+            <h2 class="section-title">Nosso Cardápio</h2>
+
+            <div class="menu-cols">
+                <!-- Sanduíches -->
+                <div class="menu-group">
+                    <h3 class="group-label">🍔 Sanduíches</h3>
+                    <div class="menu-list">
+                        <div class="menu-row">
+                            <span class="menu-name">X Burger</span>
+                            <span class="menu-price">R$ 5,00</span>
+                        </div>
+                        <div class="menu-row">
+                            <span class="menu-name">X Egg</span>
+                            <span class="menu-price">R$ 4,50</span>
+                        </div>
+                        <div class="menu-row">
+                            <span class="menu-name">X Bacon</span>
+                            <span class="menu-price">R$ 7,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Acompanhamentos -->
+                <div class="menu-group">
+                    <h3 class="group-label">🍟 Acompanhamentos</h3>
+                    <div class="menu-list">
+                        <div class="menu-row">
+                            <span class="menu-name">Batata frita</span>
+                            <span class="menu-price">R$ 2,00</span>
+                        </div>
+                        <div class="menu-row">
+                            <span class="menu-name">Refrigerante</span>
+                            <span class="menu-price">R$ 2,50</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Combos -->
+                <div class="menu-group combos-group">
+                    <h3 class="group-label">🏷️ Combos com desconto</h3>
+                    <div class="menu-list">
+                        <div class="combo-row">
+                            <span class="combo-items">Sanduíche + Batata + Refrigerante</span>
+                            <span class="combo-badge">20% OFF</span>
+                        </div>
+                        <div class="combo-row">
+                            <span class="combo-items">Sanduíche + Refrigerante</span>
+                            <span class="combo-badge">15% OFF</span>
+                        </div>
+                        <div class="combo-row">
+                            <span class="combo-items">Sanduíche + Batata</span>
+                            <span class="combo-badge">10% OFF</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cta-bottom">
+                <button class="btn-cta" @onclick='() => Nav.NavigateTo("/pedidos")'>
+                    Montar meu pedido agora <span>→</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+</div>

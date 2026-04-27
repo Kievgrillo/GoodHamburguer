@@ -1,0 +1,261 @@
+﻿@page "/acompanhamento/{PedidoId:guid}"
+@page "/acompanhamento"
+@using GoodHamburger.Blazor.Models
+@using GoodHamburger.Blazor.Services
+@inject PedidoApiService Api
+@inject NavigationManager Nav
+@implements IDisposable
+
+<PageTitle>Acompanhamento — Good Hamburger</PageTitle>
+
+<div class="acomp-wrap">
+
+    <header class="acomp-header">
+        <div class="gh-logo">🍔 Good Hamburger</div>
+        <span class="acomp-subtitulo">Painel de Acompanhamento</span>
+    </header>
+
+    @if (pedidoDestaque != null)
+    {
+        <div class="destaque-card">
+            <div class="destaque-confete">🎉</div>
+            <div class="destaque-info">
+                <div class="destaque-nome">Pedido de <strong>@pedidoDestaque.NomeCliente</strong> confirmado!</div>
+                <div class="destaque-num">#@pedidoDestaque.NumeroPedido.ToString("D3")</div>
+                <div class="destaque-status @StatusCss(pedidoDestaque.Id)">
+                    <span class="status-dot"></span>
+                    @StatusTexto(pedidoDestaque.Id)
+                </div>
+                @if (GetSegundos(pedidoDestaque.Id) < 15)
+                {
+                    <div class="destaque-timer">
+                        <div class="timer-bar">
+                            <div class="timer-fill" style="width: @GetProgresso(pedidoDestaque.Id)%"></div>
+                        </div>
+                        <span class="timer-texto">Confirmando em @(15 - GetSegundos(pedidoDestaque.Id))s...</span>
+                    </div>
+                }
+            </div>
+            <div class="destaque-total">R$ @pedidoDestaque.Total.ToString("F2")</div>
+        </div>
+    }
+
+    <div class="acomp-painel">
+        <div class="painel-header">
+            <h2 class="painel-titulo">Todos os Pedidos</h2>
+            <div class="painel-acoes">
+                <button class="btn-novo-pedido" @onclick='() => Nav.NavigateTo("/pedidos")'>
+                    + Novo Pedido
+                </button>
+                <button class="btn-refresh" @onclick="CarregarPedidos">🔄</button>
+            </div>
+        </div>
+
+        @if (carregando)
+        {
+            <div class="acomp-loading">
+                <div class="spinner"></div>
+                <span>Carregando pedidos...</span>
+            </div>
+        }
+        else if (pedidos == null || pedidos.Count == 0)
+        {
+            <div class="acomp-vazio">
+                <div class="vazio-emoji">🍔</div>
+                <p>Nenhum pedido no momento.</p>
+                <button class="btn-novo-pedido" @onclick='() => Nav.NavigateTo("/pedidos")'>
+                    Fazer o primeiro pedido
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="pedidos-grid">
+                @foreach (var p in pedidos.OrderByDescending(x => x.CreatedAt))
+                {
+                    <div class="acomp-card @(pedidoDestaque?.Id == p.Id ? "card-destaque" : "")">
+
+                        <div class="acard-header">
+                            <div class="acard-identidade">
+                                <span class="acard-num">#@p.NumeroPedido.ToString("D3")</span>
+                                <span class="acard-nome">@p.NomeCliente</span>
+                            </div>
+                            <div class="acard-status @StatusCss(p.Id)">
+                                <span class="status-dot"></span>
+                                @StatusTexto(p.Id)
+                            </div>
+                        </div>
+
+                        @if (timers.ContainsKey(p.Id) && GetSegundos(p.Id) < 15)
+                        {
+                            <div class="acard-timer">
+                                <div class="timer-bar">
+                                    <div class="timer-fill" style="width: @GetProgresso(p.Id)%"></div>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="acard-itens">
+                            @foreach (var item in p.Items)
+                            {
+                                <span class="acard-tag">@TipoEmoji(item.Type) @item.Name</span>
+                            }
+                        </div>
+
+                        <div class="acard-valores">
+                            <div class="aval-linha">
+                                <span>Subtotal</span>
+                                <span>R$ @p.Subtotal.ToString("F2")</span>
+                            </div>
+                            @if (p.DescontoPercentual > 0)
+                            {
+                                <div class="aval-linha aval-desc">
+                                    <span>Desconto (@p.DescontoPercentual%)</span>
+                                    <span>- R$ @p.DiscountAmount.ToString("F2")</span>
+                                </div>
+                            }
+                            <div class="aval-linha aval-total">
+                                <span>Total</span>
+                                <span>R$ @p.Total.ToString("F2")</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Modal de cancelar-->
+@if (pedidoParaCancelar != null)
+{
+    <div class="modal-overlay" @onclick="() => pedidoParaCancelar = null">
+        <div class="modal modal-perigo" @onclick:stopPropagation="true">
+            <div class="modal-icon">⚠️</div>
+            <h3>Cancelar pedido?</h3>
+            <p>Tem certeza que deseja cancelar o pedido de <strong>@pedidoParaCancelar.NomeCliente</strong>?</p>
+            <div class="modal-info-pedido">
+                <span class="pcard-num">#@pedidoParaCancelar.NumeroPedido.ToString("D3")</span>
+                <span>@string.Join(", ", pedidoParaCancelar.Items.Select(i => i.Name))</span>
+                <span class="modal-total-badge">R$ @pedidoParaCancelar.Total.ToString("F2")</span>
+            </div>
+            <p class="modal-aviso-final">O pedido será removido e você será redirecionado para fazer um novo pedido.</p>
+            <div class="modal-acoes">
+                <button class="btn-perigo-modal" @onclick="ExecutarCancelamento" disabled="@cancelando">
+                    @(cancelando ? "Cancelando..." : "Sim, cancelar pedido")
+                </button>
+                <button class="btn-cancelar-modal" @onclick="() => pedidoParaCancelar = null">
+                    Voltar
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid? PedidoId { get; set; }
+
+    private List<PedidoDto>? pedidos;
+    private PedidoDto? pedidoDestaque;
+    private PedidoDto? pedidoParaCancelar;
+
+    private bool carregando = false;
+    private bool cancelando = false;
+
+    private Dictionary<Guid, int> timers = new();
+    private System.Threading.Timer? _timer;
+    private PedidoDto? pedidoParaExcluir;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarPedidos();
+
+        if (PedidoId.HasValue && pedidos != null)
+        {
+            pedidoDestaque = pedidos.FirstOrDefault(p => p.Id == PedidoId.Value);
+            if (pedidoDestaque != null)
+                IniciarTimer(pedidoDestaque.Id);
+        }
+
+        _timer = new System.Threading.Timer(async _ =>
+        {
+            await CarregarPedidos();
+            foreach (var key in timers.Keys.ToList())
+                timers[key]++;
+            await InvokeAsync(StateHasChanged);
+        }, null, 10000, 10000);
+    }
+
+    private async Task CarregarPedidos()
+    {
+        carregando = true;
+        pedidos = await Api.GetAllAsync();
+        carregando = false;
+    }
+
+    private void IniciarTimer(Guid id)
+    {
+        if (!timers.ContainsKey(id))
+            timers[id] = 0;
+
+        var localTimer = new System.Threading.Timer(async _ =>
+        {
+            if (timers.ContainsKey(id))
+            {
+                timers[id]++;
+                await InvokeAsync(StateHasChanged);
+            }
+        }, null, 1000, 1000);
+    }
+
+    private int GetSegundos(Guid id) => timers.TryGetValue(id, out var s) ? s : 999;
+    private double GetProgresso(Guid id) => Math.Min((GetSegundos(id) / 15.0) * 100, 100);
+
+    private string StatusTexto(Guid id)
+    {
+        var seg = GetSegundos(id);
+        if (seg < 15) return "⏳ Confirmando pedido...";
+        return "👨‍🍳 Sendo preparado";
+    }
+
+    private string StatusCss(Guid id)
+    {
+        var seg = GetSegundos(id);
+        if (seg < 15) return "status-confirmando";
+        return "status-preparando";
+    }
+
+    private void AbrirModalCancelamento(PedidoDto p) => pedidoParaCancelar = p;
+
+    private async Task ExecutarCancelamento()
+    {
+        if (pedidoParaCancelar == null) return;
+        cancelando = true;
+
+        var (ok, _) = await Api.DeleteAsync(pedidoParaCancelar.Id);
+
+        if (ok)
+        {
+            timers.Remove(pedidoParaCancelar.Id);
+            pedidoParaCancelar = null;
+            cancelando = false;
+            Nav.NavigateTo("/pedidos");
+        }
+        else
+        {
+            pedidoParaCancelar = null;
+            cancelando = false;
+            await CarregarPedidos();
+        }
+    }
+
+    public void Dispose() => _timer?.Dispose();
+
+    private static string TipoEmoji(string tipo) => tipo switch
+    {
+        "Sanduiche" or "Sandwich" => "🍔",
+        "BatataFrita" or "Fries" => "🍟",
+        "Refrigerante" or "Drink" => "🥤",
+        _ => "🍽️"
+    };
+}

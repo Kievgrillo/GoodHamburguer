@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "Novo Perfil",
+    "Projects": [
+      {
+        "Path": "..\\GoodHamburger.Blazor\\GoodHamburger.Blazor.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "GoodHamburguer.Api.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

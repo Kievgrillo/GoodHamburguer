@@ -1,0 +1,85 @@
+﻿@page "/cardapio"
+@using GoodHamburger.Blazor.Models
+@using GoodHamburger.Blazor.Services
+@inject PedidoApiService Api
+
+<PageTitle>Good Hamburger — Cardápio</PageTitle>
+
+<div class="gh-container">
+
+    <header class="gh-header">
+        <div class="gh-logo">🍔 Good Hamburger</div>
+        <nav class="gh-nav">
+            <a href="/pedidos" class="gh-nav-link">Pedidos</a>
+            <a href="/cardapio" class="gh-nav-link active">Cardápio</a>
+            <a href="/consultar" class="gh-nav-link">Consultar por ID</a>
+        </nav>
+    </header>
+
+    <div class="gh-content gh-content-centro">
+        <section class="gh-card">
+            <h2 class="gh-card-title">🍽️ Nosso Cardápio</h2>
+
+            @if (itens == null)
+            {
+                <p class="gh-loading">Carregando...</p>
+            }
+            else
+            {
+                <div class="gh-cardapio-grupo">
+                    <h3 class="gh-grupo-titulo">🍔 Sanduíches</h3>
+                    @foreach (var item in itens.Where(i => i.Tipo == "Sanduiche"))
+                    {
+                        <div class="gh-cardapio-item">
+                            <span>@item.Nome</span>
+                            <span class="gh-cardapio-preco">R$ @item.Preco.ToString("F2")</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="gh-cardapio-grupo">
+                    <h3 class="gh-grupo-titulo">🍟 Acompanhamentos & Bebidas</h3>
+                    @foreach (var item in itens.Where(i => i.Tipo != "Sanduiche"))
+                    {
+                        <div class="gh-cardapio-item">
+                            <span>@TipoEmoji(item.Tipo) @item.Nome</span>
+                            <span class="gh-cardapio-preco">R$ @item.Preco.ToString("F2")</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="gh-cardapio-descontos">
+                    <h3 class="gh-grupo-titulo">🏷️ Combos com desconto</h3>
+                    <div class="gh-combo">
+                        <span>🍔 + 🍟 + 🥤 Sanduíche + Batata + Refrigerante</span>
+                        <span class="gh-desconto-badge">20% OFF</span>
+                    </div>
+                    <div class="gh-combo">
+                        <span>🍔 + 🥤 Sanduíche + Refrigerante</span>
+                        <span class="gh-desconto-badge">15% OFF</span>
+                    </div>
+                    <div class="gh-combo">
+                        <span>🍔 + 🍟 Sanduíche + Batata</span>
+                        <span class="gh-desconto-badge">10% OFF</span>
+                    </div>
+                </div>
+            }
+        </section>
+    </div>
+</div>
+
+@code {
+    private List<ItemMenuDto>? itens;
+
+    protected override async Task OnInitializedAsync()
+    {
+        itens = await Api.GetMenuAsync();
+    }
+
+    private static string TipoEmoji(string tipo) => tipo switch
+    {
+        "BatataFrita" => "🍟",
+        "Refrigerante" => "🥤",
+        _ => "🍽️"
+    };
+}

@@ -1,0 +1,434 @@
+﻿@page "/pedidos"
+@using GoodHamburger.Blazor.Models
+@using GoodHamburger.Blazor.Services
+@inject PedidoApiService Api
+@inject NavigationManager Nav
+
+<PageTitle>Fazer Pedido — Good Hamburger</PageTitle>
+
+<div class="pedido-wrap">
+
+    <div class="pedido-header">
+        <button class="btn-back" @onclick='() => Nav.NavigateTo("/")'>← Voltar</button>
+        <h1 class="pedido-title">Novo Pedido</h1>
+    </div>
+
+    @if (!string.IsNullOrEmpty(erroGlobal))
+    {
+        <div class="alert-erro">⚠️ @erroGlobal <button @onclick="() => erroGlobal = null">✕</button></div>
+    }
+
+    <div class="pedido-grid">
+
+        <section class="pedido-form card">
+
+            <div class="form-section">
+                <h2 class="form-title">👤 Identificação</h2>
+                <div class="input-group">
+                    <label class="input-label">Seu nome</label>
+                    <input class="input-field @(erroNome != null ? "input-erro" : "")"
+                           type="text"
+                           placeholder="Ex: João Silva"
+                           @bind="nomeCliente"
+                           @oninput="() => erroNome = null" />
+                    @if (erroNome != null)
+                    {
+                        <span class="input-msg-erro">@erroNome</span>
+                    }
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="form-section">
+                <h2 class="form-title">🍽️ Escolha seus itens</h2>
+                <p class="form-hint">Máximo 1 sanduíche, 1 batata e 1 refrigerante por pedido.</p>
+
+                @if (menuItems == null)
+                {
+                    <p class="loading-text">Carregando cardápio...</p>
+                }
+                else
+                {
+                    <div class="items-group">
+                        <span class="items-group-label">🍔 Sanduíches</span>
+                        <div class="items-row">
+                            @foreach (var item in menuItems.Where(i => i.Tipo == "Sanduiche"))
+                            {
+                                var sel = itensSelecionados.Contains(item.Id);
+                                <div class="item-card @(sel ? "selected" : "")" @onclick="() => ToggleItem(item)">
+                                    <div class="item-nome">@item.Nome</div>
+                                    <div class="item-preco">R$ @item.Preco.ToString("F2")</div>
+                                    @if (sel) { <div class="item-check">✓</div> }
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="items-group">
+                        <span class="items-group-label">🍟 Acompanhamentos</span>
+                        <div class="items-row">
+                            @foreach (var item in menuItems.Where(i => i.Tipo == "BatataFrita"))
+                            {
+                                var sel = itensSelecionados.Contains(item.Id);
+                                <div class="item-card @(sel ? "selected" : "")" @onclick="() => ToggleItem(item)">
+                                    <div class="item-nome">@item.Nome</div>
+                                    <div class="item-preco">R$ @item.Preco.ToString("F2")</div>
+                                    @if (sel) { <div class="item-check">✓</div> }
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="items-group">
+                        <span class="items-group-label">🥤 Bebidas</span>
+                        <div class="items-row">
+                            @foreach (var item in menuItems.Where(i => i.Tipo == "Refrigerante"))
+                            {
+                                var sel = itensSelecionados.Contains(item.Id);
+                                <div class="item-card @(sel ? "selected" : "")" @onclick="() => ToggleItem(item)">
+                                    <div class="item-nome">@item.Nome</div>
+                                    <div class="item-preco">R$ @item.Preco.ToString("F2")</div>
+                                    @if (sel) { <div class="item-check">✓</div> }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="form-section">
+                <h2 class="form-title">💰 Resumo</h2>
+                @if (itensSelecionados.Count == 0)
+                {
+                    <p class="resumo-vazio">Nenhum item selecionado ainda.</p>
+                }
+                else
+                {
+                    <div class="resumo-itens">
+                        @foreach (var item in menuItems!.Where(m => itensSelecionados.Contains(m.Id)))
+                        {
+                            <div class="resumo-linha">
+                                <span>@TipoEmoji(item.Tipo) @item.Nome</span>
+                                <span>R$ @item.Preco.ToString("F2")</span>
+                            </div>
+                        }
+                    </div>
+                    <div class="resumo-calc">
+                        <div class="calc-linha">
+                            <span>Subtotal</span>
+                            <span>R$ @Subtotal.ToString("F2")</span>
+                        </div>
+                        @if (DescontoPercent > 0)
+                        {
+                            <div class="calc-linha desconto">
+                                <span>Desconto (@DescontoPercent%)</span>
+                                <span>- R$ @DescontoValor.ToString("F2")</span>
+                            </div>
+                            <div class="combo-aviso">🎉 Você ganhou @DescontoPercent% de desconto!</div>
+                        }
+                        <div class="calc-linha total">
+                            <span>Total</span>
+                            <span>R$ @Total.ToString("F2")</span>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (itensSelecionados.Count > 0)
+            {
+                <div class="aviso-confirmacao">
+                    ⚠️ Ao confirmar, o pedido <strong>não poderá ser editado</strong>. Para alterações será necessário cancelar e fazer um novo pedido.
+                </div>
+            }
+
+            <div class="btn-confirmar-wrap">
+                <button class="btn-confirmar @(itensSelecionados.Count == 0 ? "disabled-visual" : "")"
+                        @onclick="TentarConfirmarPedido"
+                        disabled="@salvando">
+                    @(salvando ? "Confirmando..." : "✅ Confirmar Pedido")
+                </button>
+                @if (itensSelecionados.Count == 0)
+                {
+                    <div class="tooltip-disabled">
+                        Adicione pelo menos um item ao pedido para continuar.
+                    </div>
+                }
+            </div>
+        </section>
+
+        <section class="lista-pedidos">
+            <div class="lista-header">
+                <h2 class="lista-title">📋 Pedidos em aberto</h2>
+                <button class="btn-refresh" @onclick="CarregarPedidos">🔄</button>
+            </div>
+
+            @if (carregando)
+            {
+                <p class="loading-text">Carregando...</p>
+            }
+            else if (pedidos == null || pedidos.Count == 0)
+            {
+                <div class="lista-vazia">
+                    <p>Nenhum pedido em aberto.</p>
+                    <p>Faça o primeiro! 👆</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var p in pedidos.OrderByDescending(x => x.CreatedAt))
+                {
+                    <div class="pedido-card">
+                        <div class="pcard-top">
+                            <div class="pcard-id">
+                                <span class="pcard-num">#@p.NumeroPedido.ToString("D3")</span>
+                                <span class="pcard-nome">@p.NomeCliente</span>
+                            </div>
+                            <span class="pcard-hora">@p.CreatedAt.ToLocalTime().ToString("HH:mm")</span>
+                        </div>
+                        <div class="pcard-itens">
+                            @foreach (var item in p.Items)
+                            {
+                                <span class="pcard-tag">@TipoEmoji(item.Type) @item.Name</span>
+                            }
+                        </div>
+                        <div class="pcard-valores">
+                            <div class="pval-linha">
+                                <span>Subtotal</span>
+                                <span>R$ @p.Subtotal.ToString("F2")</span>
+                            </div>
+                            @if (p.DescontoPercentual > 0)
+                            {
+                                <div class="pval-linha pval-desc">
+                                    <span>Desconto (@p.DescontoPercentual%)</span>
+                                    <span>- R$ @p.DiscountAmount.ToString("F2")</span>
+                                </div>
+                            }
+                            <div class="pval-linha pval-total">
+                                <span>Total</span>
+                                <span>R$ @p.Total.ToString("F2")</span>
+                            </div>
+                        </div>
+                        <div class="pcard-acoes">
+                            <button class="btn-excluir" @onclick="() => AbrirModalExclusao(p)">🗑️ Remover</button>
+                        </div>
+                    </div>
+                }
+            }
+        </section>
+    </div>
+</div>
+
+@if (mostrarModalConfirmacao)
+{
+    <div class="gh-modal-overlay" @onclick="() => mostrarModalConfirmacao = false">
+        <div class="gh-modal" @onclick:stopPropagation="true">
+            <div class="gh-modal-icon">🍔</div>
+            <h3>Confirmar pedido?</h3>
+            <p>Olá, <strong>@nomeCliente</strong>! Confira seu pedido:</p>
+            <div class="gh-modal-itens">
+                @foreach (var item in menuItems!.Where(m => itensSelecionados.Contains(m.Id)))
+                {
+                    <div class="gh-modal-item-linha">
+                        <span>@TipoEmoji(item.Tipo) @item.Nome</span>
+                        <span>R$ @item.Preco.ToString("F2")</span>
+                    </div>
+                }
+            </div>
+            <div class="gh-modal-total-linha">
+                <span>Total</span>
+                <span>R$ @Total.ToString("F2")</span>
+            </div>
+            <div class="gh-modal-aviso-final">
+                ⚠️ Após confirmar, o pedido <strong>não poderá ser editado</strong>.
+            </div>
+            <div class="modal-acoes">
+                <button class="btn-confirmar-modal" @onclick="ExecutarConfirmacao" disabled="@salvando">
+                    @(salvando ? "Confirmando..." : "Sim, confirmar!")
+                </button>
+                <button class="btn-cancelar-modal" @onclick="() => mostrarModalConfirmacao = false">
+                    Voltar e editar
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (pedidoParaExcluir != null)
+{
+    <div class="gh-modal-overlay" @onclick="() => pedidoParaExcluir = null">
+        <div class="gh-modal-perigo" @onclick:stopPropagation="true">
+            <div class="gh-modal-icon">🗑️</div>
+            <h3>Remover pedido?</h3>
+            <p>Você tem certeza que deseja remover o pedido de <strong>@pedidoParaExcluir.NomeCliente</strong>?</p>
+            <div class="gh-modal-info-pedido">
+                <span class="pcard-num">#@pedidoParaExcluir.NumeroPedido.ToString("D3")</span>
+                <span>@string.Join(", ", pedidoParaExcluir.Items.Select(i => i.Name))</span>
+                <span class="modal-total-badge">R$ @pedidoParaExcluir.Total.ToString("F2")</span>
+            </div>
+            <p class="modal-aviso-final">Esta ação <strong>não pode ser desfeita</strong>.</p>
+            <div class="modal-acoes">
+                <button class="btn-perigo-modal" @onclick="ExecutarExclusao" disabled="@excluindo">
+                    @(excluindo ? "Removendo..." : "Sim, remover pedido")
+                </button>
+                <button class="btn-cancelar-modal" @onclick="() => pedidoParaExcluir = null">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<ItemMenuDto>? menuItems;
+    private List<PedidoDto>? pedidos;
+    private List<int> itensSelecionados = new();
+
+    private string nomeCliente = string.Empty;
+    private string? erroNome;
+    private string? erroGlobal;
+
+    private bool salvando = false;
+    private bool carregando = false;
+    private bool excluindo = false;
+    private bool mostrarModalConfirmacao = false;
+
+    private PedidoDto? pedidoParaExcluir;
+
+    private decimal Subtotal => menuItems?
+        .Where(m => itensSelecionados.Contains(m.Id))
+        .Sum(m => m.Preco) ?? 0;
+
+    private decimal DescontoPercent
+    {
+        get
+        {
+            if (menuItems == null) return 0;
+            var sel = menuItems.Where(m => itensSelecionados.Contains(m.Id)).ToList();
+            bool s = sel.Any(i => i.Tipo == "Sanduiche");
+            bool b = sel.Any(i => i.Tipo == "BatataFrita");
+            bool r = sel.Any(i => i.Tipo == "Refrigerante");
+            if (s && b && r) return 20;
+            if (s && r)      return 15;
+            if (s && b)      return 10;
+            return 0;
+        }
+    }
+
+    private decimal DescontoValor => Subtotal * (DescontoPercent / 100);
+    private decimal Total => Subtotal - DescontoValor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        menuItems = await Api.GetMenuAsync();
+        await CarregarPedidos();
+    }
+
+    private async Task CarregarPedidos()
+    {
+        carregando = true;
+        pedidos = await Api.GetAllAsync();
+        carregando = false;
+    }
+
+    private void ToggleItem(ItemMenuDto item)
+    {
+        erroGlobal = null;
+
+        if (itensSelecionados.Contains(item.Id))
+        {
+            itensSelecionados.Remove(item.Id);
+            return;
+        }
+
+        var tipoJaSelecionado = menuItems!
+            .Where(m => itensSelecionados.Contains(m.Id))
+            .Any(m => m.Tipo == item.Tipo);
+
+        if (tipoJaSelecionado)
+        {
+            var tipoNome = item.Tipo switch
+            {
+                "Sanduiche"    => "sanduíche",
+                "BatataFrita"  => "batata frita",
+                "Refrigerante" => "refrigerante",
+                _ => "item"
+            };
+            erroGlobal = $"Você já adicionou um {tipoNome}. Cada pedido permite apenas um item de cada tipo.";
+            return;
+        }
+
+        itensSelecionados.Add(item.Id);
+    }
+
+    private void TentarConfirmarPedido()
+    {
+        erroGlobal = null;
+        erroNome = null;
+
+        if (string.IsNullOrWhiteSpace(nomeCliente))
+        {
+            erroNome = "Informe seu nome para continuar.";
+            return;
+        }
+        if (itensSelecionados.Count == 0)
+        {
+            erroGlobal = "Adicione pelo menos um item ao pedido para continuar.";
+            return;
+        }
+
+        mostrarModalConfirmacao = true;
+    }
+
+    private async Task ExecutarConfirmacao()
+    {
+        salvando = true;
+        mostrarModalConfirmacao = false;
+        StateHasChanged(); 
+
+        try
+        {
+            var (pedido, erro) = await Api.CreateAsync(nomeCliente.Trim(), itensSelecionados);
+
+            if (erro != null)
+            {
+                erroGlobal = erro;
+                salvando = false;
+                return;
+            }
+
+            await Task.Delay(100);
+            Nav.NavigateTo($"/acompanhamento/{pedido!.Id}", forceLoad: false);
+        }
+        catch (Exception ex)
+        {
+            erroGlobal = $"Erro ao confirmar: {ex.Message}";
+            salvando = false;
+        }
+    }
+
+    private void AbrirModalExclusao(PedidoDto p) => pedidoParaExcluir = p;
+
+    private async Task ExecutarExclusao()
+    {
+        if (pedidoParaExcluir == null) return;
+        excluindo = true;
+
+        var (ok, erro) = await Api.DeleteAsync(pedidoParaExcluir.Id);
+        if (!ok) erroGlobal = erro;
+
+        pedidoParaExcluir = null;
+        excluindo = false;
+        await CarregarPedidos();
+    }
+
+    private static string TipoEmoji(string tipo) => tipo switch
+    {
+        "Sanduiche" or "Sandwich" => "🍔",
+        "BatataFrita" or "Fries"  => "🍟",
+        "Refrigerante" or "Drink" => "🥤",
+        _ => "🍽️"
+    };
+}
