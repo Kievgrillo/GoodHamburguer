@@ -1,4 +1,5 @@
-﻿using GoodHamburger.Application.Services;
+﻿using GoodHamburger.Application.Requests;
+using GoodHamburger.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GoodHamburguer.Api.Controllers
@@ -19,9 +20,9 @@ namespace GoodHamburguer.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] List<int> itemIds)
+        public async Task<IActionResult> Create([FromBody] CriarPedidoRequest request)
         {
-            var created = await orderService.CreateAsync(itemIds);
+            var created = await orderService.CreateAsync(request.NomeCliente, request.ItemIds);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
